@@ -237,6 +237,8 @@ app.get("/get-streak", async (req, res) => {
 // ----------------------
 // START SERVER
 // ----------------------
+app.get("/api", (req, res) => res.send("API is running🔥"));
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
