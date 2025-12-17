@@ -2,22 +2,24 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 
 const app = express();
-app.use(cors());
 
+// ----------------------
+// CORS SETTINGS (Correct)
+// ----------------------
 const allowedOrigins = [
   "http://127.0.0.1:5500",
-  "http://localhost:5500",   // optional fallback
-  "https://your-frontend-domain.com"   // keep for future deployment
+  "http://localhost:5500",
+  "https://your-frontend-domain.com",   // update with your real frontend URL
+  "https://resumequiz-f.vercel.app",    // example frontend
+  "https://resume-quiz-b.vercel.app"    // backend itself
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow Postman, ThunderClient, or requests with no origin
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -28,57 +30,55 @@ app.use(
   })
 );
 
-
-
-//app.use(bodyParser.json());
+// Parse JSON
 app.use(express.json());
 const PORT = process.env.PORT || 4000;
 
-// Streak model
-const User = require('./models/User');
+// ----------------------
+// MODELS + ROUTES
+// ----------------------
+const User = require("./models/User");
 const bcrypt = require("bcryptjs");
 const Streak = require("./models/Streak");
 const signupRoute = require("./routes/signup");
 const loginRoute = require("./routes/login");
-// use routes
+
+// Correct API route prefixes
 app.use("/api/signup", signupRoute);
 app.use("/api/login", loginRoute);
 
 // ----------------------
-// MONGODB CONNECTION
+// MONGO CONNECT
 // ----------------------
-const mongoUri = process.env.MONGODB_URI;
-
 mongoose
-  .connect(mongoUri, {})
+  .connect(process.env.MONGODB_URI, {})
   .then(() => console.log("✅ MongoDB connected"))
-  .catch((err) =>
-    console.error("❌ MongoDB connection error:", err.message)
-  );
+  .catch((err) => console.error("❌ MongoDB Error:", err.message));
 
 // ----------------------
-// GROQ AI IMPORT
+// GROQ AI
 // ----------------------
 const Groq = require("groq-sdk");
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-
-
-
-
 // ----------------------
-// HEALTH ROUTE
+// HEALTH CHECK
 // ----------------------
 app.get("/", (req, res) => {
   res.send({ ok: true, msg: "Aptitude Groq backend running" });
 });
 
 // ----------------------
-// UPDATE STREAK ROUTE
+// API TEST ROUTE
 // ----------------------
-app.post("/update-streak", async (req, res) => {
+app.get("/api", (req, res) => res.send("API is running🔥"));
+
+// ----------------------
+// UPDATE STREAK (fixed)
+// ----------------------
+app.post("/api/update-streak", async (req, res) => {
   try {
     const { userId } = req.body;
     if (!userId)
@@ -101,12 +101,10 @@ app.post("/update-streak", async (req, res) => {
         ? user.lastQuizDate.toDateString()
         : null;
 
-      const yesterdayStr = new Date(
-        Date.now() - 86400000
-      ).toDateString();
+      const yesterdayStr = new Date(Date.now() - 86400000).toDateString();
 
       if (last === todayStr) {
-        // today already counted
+        // already counted
       } else if (last === yesterdayStr) {
         user.currentStreak += 1;
       } else {
@@ -128,15 +126,14 @@ app.post("/update-streak", async (req, res) => {
       bestStreak: user.bestStreak,
     });
   } catch (err) {
-    console.error("Streak Error:", err);
     res.status(500).json({ error: "Streak update failed" });
   }
 });
 
 // ----------------------
-// GENERATE QUESTIONS (GROQ)
+// GENERATE QUESTIONS (fixed)
 // ----------------------
-app.post("/generate", async (req, res) => {
+app.post("/api/generate", async (req, res) => {
   try {
     const { topics = [], difficulty = "basic", perTopic = 3 } = req.body;
 
@@ -156,45 +153,40 @@ app.post("/generate", async (req, res) => {
     let parsed;
     try {
       parsed = JSON.parse(textOutput);
-    } catch (err) {
-      // try extracting JSON between [ ... ]
+    } catch {
       const first = textOutput.indexOf("[");
       const last = textOutput.lastIndexOf("]");
-      if (first !== -1 && last !== -1 && last > first) {
+      if (first !== -1 && last !== -1) {
         parsed = JSON.parse(textOutput.slice(first, last + 1));
       } else {
-        throw new Error("AI response not valid JSON");
+        throw new Error("AI returned invalid JSON");
       }
     }
 
     res.json({ ok: true, questions: parsed });
   } catch (err) {
-    console.error("Groq Error:", err);
-    res.status(500).json({
-      error: "Failed to generate questions",
-      details: err.message,
-    });
+    res.status(500).json({ error: "Failed to generate questions" });
   }
 });
 
 // ----------------------
-// PROMPT FUNCTION
+// PROMPT BUILDER
 // ----------------------
 function buildPrompt(topics, difficulty, perTopic) {
   const topicsList =
     topics.length > 0
       ? topics.join(", ")
-      : "Percentages, Ratio & Proportion, Time & Work, Profit & Loss, Probability";
+      : "Percentages, Ratio, Time, Profit & Loss, Probability";
 
   return `
-Generate ${perTopic} multiple-choice questions PER TOPIC for: ${topicsList}.
+Generate ${perTopic} MCQs per topic: ${topicsList}.
 Difficulty: ${difficulty}
 
-Return STRICT JSON ONLY, like:
+Return STRICT JSON ONLY:
 [
   {
     "topic": "Percentages",
-    "question": "Example question?",
+    "question": "...",
     "options": ["A", "B", "C", "D"],
     "answer": "A",
     "explain": "Short explanation"
@@ -204,41 +196,35 @@ Return STRICT JSON ONLY, like:
 Rules:
 - No extra text
 - No commentary
-- Options must be unique
 - Answer must match one option
 `;
 }
 
-
-app.get("/get-streak", async (req, res) => {
+// ----------------------
+// GET STREAK (fixed)
+// ----------------------
+app.get("/api/get-streak", async (req, res) => {
   try {
     const userId = req.query.userId;
 
     const user = await Streak.findOne({ userId });
 
-    if (!user) {
+    if (!user)
       return res.json({ ok: true, currentStreak: 0, bestStreak: 0 });
-    }
 
     res.json({
       ok: true,
       currentStreak: user.currentStreak,
-      bestStreak: user.bestStreak
+      bestStreak: user.bestStreak,
     });
-
   } catch (err) {
     res.status(500).json({ error: "Failed to load streak" });
   }
 });
 
-
-
-
 // ----------------------
 // START SERVER
 // ----------------------
-app.get("/api", (req, res) => res.send("API is running🔥"));
-
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
