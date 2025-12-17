@@ -12,9 +12,9 @@ const app = express();
 const allowedOrigins = [
   "http://127.0.0.1:5500",
   "http://localhost:5500",
-  "https://your-frontend-domain.com",   // update with your real frontend URL
-  "https://resumequiz-f.vercel.app",    // example frontend
-  "https://resume-quiz-b.vercel.app"    // backend itself
+  "https://rinki9999.github.io",
+  "https://rinki9999.github.io/resumeQuiz-F",
+  "https://resume-quiz-b.vercel.app"
 ];
 
 app.use(
@@ -23,12 +23,14 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
+        console.log("❌ Blocked by CORS:", origin);
         callback(new Error("Not allowed by CORS: " + origin));
       }
     },
     credentials: true,
   })
 );
+
 
 // Parse JSON
 app.use(express.json());
