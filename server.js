@@ -41,8 +41,8 @@ const Streak = require("./models/Streak");
 const signupRoute = require("./routes/signup");
 const loginRoute = require("./routes/login");
 // use routes
-app.use("/signup", signupRoute);
-app.use("/login", loginRoute);
+app.use("/api/signup", signupRoute);
+app.use("/api/login", loginRoute);
 
 // ----------------------
 // MONGODB CONNECTION
