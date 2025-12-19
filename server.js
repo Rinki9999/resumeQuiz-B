@@ -178,17 +178,22 @@ function buildPrompt(topics, difficulty, perTopic) {
   const topicsList =
     topics.length > 0
       ? topics.join(", ")
-      : "Percentages, Ratio, Time, Profit & Loss, Probability";
+      : "Percentages, Ratio & Proportion, Time & Work, Profit & Loss, Probability";
 
   return `
-Generate ${perTopic} MCQs per topic: ${topicsList}.
+Generate ${perTopic} multiple-choice questions PER TOPIC for: ${topicsList}.
 Difficulty: ${difficulty}
 
-Return STRICT JSON ONLY:
+IMPORTANT:
+- Use ONLY Indian currency (₹ / INR), NOT dollars ($)
+- Use Indian number format (₹1,000, ₹10,000, ₹1,00,000)
+- Questions must be suitable for Indian students
+
+Return STRICT JSON ONLY, like:
 [
   {
     "topic": "Percentages",
-    "question": "...",
+    "question": "Example question?",
     "options": ["A", "B", "C", "D"],
     "answer": "A",
     "explain": "Short explanation"
@@ -198,9 +203,11 @@ Return STRICT JSON ONLY:
 Rules:
 - No extra text
 - No commentary
+- Options must be unique
 - Answer must match one option
 `;
 }
+
 
 // ----------------------
 // GET STREAK (fixed)
